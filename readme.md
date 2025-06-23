@@ -1,11 +1,11 @@
 #  AI-Driven Text Feedback and Search System
 
 This project allows users to:
--  Scrape content from web pages.
--  Use AI agents to spin (rephrase) and review text.
--  Save and version AI-generated content.
+-  Scraping of content from web pages.
+-  Use AI agents/api keys to spin (rephrase) and review text.
+-  Save and id AI-generated content.
 -  Search similar text using semantic similarity (ChromaDB).
--  Submit feedback (Accepted / Edited / Rejected) for reward-based learning.
+-  Submit the feedback in the following (Accepted / Edited / Rejected) for reward-based learning.
 -  View ranked results based on relevance and community feedback.
 
 ---
@@ -13,16 +13,16 @@ This project allows users to:
 ## Tech Stack
 
 ### Backend
-- **FastAPI** – for serving endpoints.
-- **ChromaDB** – vector DB to retrieve semantically similar versions.
-- **Pydantic** – for data validation.
-- **Playwright (optional)** – for webpage screenshot/scraping.
+- FastAPI – for api calls all.
+- ChromaDB – vector DB to retrieve semantically similar versions.
+- Pydantic – for data validity.
+- Playwright – for webpage screenshot/scraping.
 
 ### Frontend
-- **React.js + Vite** – fast frontend development.
-- **Tailwind CSS** – styling.
-- **Fetch API** – to communicate with backend.
-- **Icons/Emojis** – for intuitive UI feedback.
+- React.js + Vite– frontend development or some minor funcitonality and for triggered updates.
+- Tailwind CSS– styling.
+- Fetch API – to communicate with backend.
+- Icons – for intuitive UI feedback.
 
 ---
 

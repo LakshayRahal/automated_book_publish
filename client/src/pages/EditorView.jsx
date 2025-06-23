@@ -1,210 +1,244 @@
 import { useState, useEffect } from 'react';
 
 function EditorView() {
+  // Define all local states
   const [url, setUrl] = useState('');
-  const [content, setContent] = useState('');
-  const [spun, setSpun] = useState('');
-  const [originalSpun, setOriginalSpun] = useState('');
-  const [reviewed, setReviewed] = useState('');
-  const [versionId, setVersionId] = useState(null);
-  const [feedbackGiven, setFeedbackGiven] = useState(false);
-  const [isEditing, setIsEditing] = useState(false);
+  const [inputText, setInputText] = useState('');
+  const [spunText, setSpunText] = useState('');
+  const [originalSpunText, setOriginalSpunText] = useState('');
+  const [aiReviewNotes, setAiReviewNotes] = useState('');
+  const [currentVersionId, setCurrentVersionId] = useState(null);
+  const [feedbackSent, setFeedbackSent] = useState(false);
+  const [editable, setEditable] = useState(false);
 
-  const baseURL = import.meta.env.VITE_API_URL;
+  const apiHost = import.meta.env.VITE_API_URL;
 
-  // Load session
+  // Load stored session data on mount
   useEffect(() => {
-    const saved = ['content', 'spun', 'reviewed', 'versionId'].reduce((acc, key) => {
-      acc[key] = localStorage.getItem(key);
-      return acc;
-    }, {});
-    if (saved.content) setContent(saved.content);
-    if (saved.spun) {
-      setSpun(saved.spun);
-      setOriginalSpun(saved.spun);
-    }
-    if (saved.reviewed) setReviewed(saved.reviewed);
-    if (saved.versionId) setVersionId(saved.versionId);
+    const storedKeys = ['content', 'spun', 'reviewed', 'versionId'];
+    storedKeys.forEach((key) => {
+      const saved = localStorage.getItem(key);
+      if (saved) {
+        switch (key) {
+          case 'content':
+            setInputText(saved);
+            break;
+          case 'spun':
+            setSpunText(saved);
+            setOriginalSpunText(saved);
+            break;
+          case 'reviewed':
+            setAiReviewNotes(saved);
+            break;
+          case 'versionId':
+            setCurrentVersionId(saved);
+            break;
+        }
+      }
+    });
   }, []);
 
-  // Save session
-  useEffect(() => localStorage.setItem('content', content), [content]);
-  useEffect(() => localStorage.setItem('spun', spun), [spun]);
-  useEffect(() => localStorage.setItem('reviewed', reviewed), [reviewed]);
-  useEffect(() => localStorage.setItem('versionId', versionId), [versionId]);
+  // Save changes to localStorage
+  useEffect(() => {
+    localStorage.setItem('content', inputText);
+  }, [inputText]);
 
-  const handleScrape = async () => {
-    const res = await fetch(`${baseURL}/scrape`, {
+  useEffect(() => {
+    localStorage.setItem('spun', spunText);
+  }, [spunText]);
+
+  useEffect(() => {
+    localStorage.setItem('reviewed', aiReviewNotes);
+  }, [aiReviewNotes]);
+
+  useEffect(() => {
+    localStorage.setItem('versionId', currentVersionId);
+  }, [currentVersionId]);
+
+  const scrapeTextFromUrl = async () => {
+    const response = await fetch(`${apiHost}/scrape`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ url }),
     });
-    const data = await res.json();
-    setContent(data.content || '');
+    const result = await response.json();
+    setInputText(result.content || '');
   };
 
-  const handleSpin = async () => {
-    const res = await fetch(`${baseURL}/spin`, {
+
+
+  // whenever spin takes place 
+  const triggerSpin = async () => {
+    const response = await fetch(`${apiHost}/spin`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text: content }),
+      body: JSON.stringify({ text: inputText }),
     });
-    const data = await res.json();
-    setSpun(data.spun_text);
-    setOriginalSpun(data.spun_text);
-    setVersionId(data.version_id);
-    setFeedbackGiven(false);
-    setIsEditing(false);
-    setReviewed('');
+    const result = await response.json();
+    setSpunText(result.spun_text);
+    setOriginalSpunText(result.spun_text);
+    setCurrentVersionId(result.version_id);
+    setFeedbackSent(false);
+    setEditable(false);
+    setAiReviewNotes('');
   };
 
-  const handleFeedback = async (type) => {
-    if (!versionId) return alert('Spin content before submitting feedback.');
 
-    if (type === 'edited') {
-      const res = await fetch(`${baseURL}/review`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: spun }),
-      });
-      const data = await res.json();
-      setReviewed(data.reviewed_text);
-      setIsEditing(true);
-      alert("Spun text is now editable. Refer to the AI review suggestions below.");
+  // feedback take karne ke luye 
+  const provideFeedback = async (type) => {
+    if (!currentVersionId) {
+      alert('Please generate spin content before submitting feedback.');
       return;
     }
 
-    await fetch(`${baseURL}/feedback`, {
+    if (type === 'edited') {
+      const response = await fetch(`${apiHost}/review`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: spunText }),
+      });
+      const result = await response.json();
+      setAiReviewNotes(result.reviewed_text);
+      setEditable(true);
+      alert('AI Review loaded. You can now edit the spun content.');
+      return;
+    }
+
+    await fetch(`${apiHost}/feedback`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ version_id: versionId, feedback: type }),
+      body: JSON.stringify({ version_id: currentVersionId, feedback: type }),
     });
 
-    setFeedbackGiven(true);
-    alert(`Feedback submitted: ${type}`);
+    setFeedbackSent(true);
+    alert(`Thanks! Feedback submitted: ${type}`);
   };
 
-  const handleSaveEditedVersion = async () => {
-    await fetch(`${baseURL}/save_version`, {
+
+
+  // storing editing version 
+  const storeEditedVersion = async () => {
+    await fetch(`${apiHost}/save_version`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text: spun, version_id: versionId }),
+      body: JSON.stringify({ text: spunText, version_id: currentVersionId }),
     });
 
-    await fetch(`${baseURL}/feedback`, {
+    await fetch(`${apiHost}/feedback`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ version_id: versionId, feedback: 'edited' }),
+      body: JSON.stringify({ version_id: currentVersionId, feedback: 'edited' }),
     });
 
-    setFeedbackGiven(true);
-    setIsEditing(false);
-    alert('Edited version saved with feedback = 0.5');
+    setFeedbackSent(true);
+    setEditable(false);
+    alert('Changes saved and feedback updated as edited.');
   };
 
-  const handleClearSession = () => {
+
+  // clear all data in the session 
+  const resetSession = () => {
     localStorage.clear();
     setUrl('');
-    setContent('');
-    setSpun('');
-    setOriginalSpun('');
-    setReviewed('');
-    setVersionId(null);
-    setFeedbackGiven(false);
-    setIsEditing(false);
+    setInputText('');
+    setSpunText('');
+    setOriginalSpunText('');
+    setAiReviewNotes('');
+    setCurrentVersionId(null);
+    setFeedbackSent(false);
+    setEditable(false);
   };
 
   return (
+    //  all ui simple
     <div className="space-y-4">
       <input
         type="text"
-        placeholder="Enter chapter URL..."
+        placeholder="Paste URL here"
         value={url}
         onChange={(e) => setUrl(e.target.value)}
         className="w-full p-2 border"
       />
-      <button onClick={handleScrape} className="bg-blue-600 text-white px-4 py-2 rounded">
-        Scrape
+      <button onClick={scrapeTextFromUrl} className="bg-blue-600 text-white px-4 py-2 rounded">
+        Fetch Content
       </button>
 
       <textarea
-        className="w-full border p-2 h-70"
-        value={content}
-        onChange={(e) => setContent(e.target.value)}
-        placeholder="Scraped content will appear here..."
+        className="w-full border p-2 h-60"
+        value={inputText}
+        onChange={(e) => setInputText(e.target.value)}
+        placeholder="Scraped or manually entered text"
       />
 
-      <div className="flex gap-4">
-        <button onClick={handleSpin} className="bg-green-600 text-white px-4 py-2 rounded">
-          Spin
-        </button>
-      </div>
+      <button onClick={triggerSpin} className="bg-green-600 text-white px-4 py-2 rounded">
+        Spin Text
+      </button>
 
-      {spun && (
-        <div className="mt-4">
-          <h2 className="font-bold mb-2">🔄 Spun Text {isEditing ? "(Editable)" : "(Read-only)"}:</h2>
+      {spunText && (
+        <div>
+          <h3 className="font-bold mt-4 mb-2">
+            Spun Output {editable ? '(Editable)' : '(Locked)'}
+          </h3>
           <textarea
-            className="w-full border p-2 h-70"
-            value={spun}
-            onChange={(e) => setSpun(e.target.value)}
-            readOnly={!isEditing}
+            className="w-full border p-2 h-60"
+            value={spunText}
+            onChange={(e) => setSpunText(e.target.value)}
+            readOnly={!editable}
           />
-  
 
-          <div className="flex gap-2 mt-3">
-            {!isEditing && (
+          <div className="flex gap-2 mt-2">
+            {!editable ? (
               <>
                 <button
-                  onClick={() => handleFeedback("accepted")}
-                  disabled={feedbackGiven}
-                  className="bg-green-600 text-white px-3 py-1 rounded disabled:opacity-50"
+                  onClick={() => provideFeedback('accepted')}
+                  disabled={feedbackSent}
+                  className="bg-green-700 text-white px-3 py-1 rounded disabled:opacity-50"
                 >
                   Accept
                 </button>
                 <button
-                  onClick={() => handleFeedback("rejected")}
-                  disabled={feedbackGiven}
-                  className="bg-red-600 text-white px-3 py-1 rounded disabled:opacity-50"
+                  onClick={() => provideFeedback('rejected')}
+                  disabled={feedbackSent}
+                  className="bg-red-700 text-white px-3 py-1 rounded disabled:opacity-50"
                 >
                   Reject
                 </button>
                 <button
-                  onClick={() => handleFeedback("edited")}
-                  disabled={feedbackGiven}
-                  className="bg-yellow-600 text-white px-3 py-1 rounded disabled:opacity-50"
+                  onClick={() => provideFeedback('edited')}
+                  disabled={feedbackSent}
+                  className="bg-yellow-500 text-white px-3 py-1 rounded disabled:opacity-50"
                 >
-                  ✏️ Ai review & Edit
+                  Edit with AI Notes
                 </button>
               </>
-            )}
-            {isEditing && (
+            ) : (
               <button
-                onClick={handleSaveEditedVersion}
+                onClick={storeEditedVersion}
                 className="bg-blue-700 text-white px-3 py-1 rounded"
               >
-                💾 Save Edited Version
+                Save Changes
               </button>
             )}
           </div>
         </div>
       )}
 
-      {isEditing && reviewed && (
+      {editable && aiReviewNotes && (
         <div className="mt-4">
-          <h2 className="font-bold mb-2">🧠 AI Review Suggestions:</h2>
+          <h4 className="font-semibold mb-2">AI Suggestions</h4>
           <textarea
-            className="w-full border p-2 h-70 bg-gray-100 text-gray-800"
-            value={reviewed}
+            className="w-full border p-2 h-60 bg-gray-100 text-gray-700"
+            value={aiReviewNotes}
             readOnly
           />
         </div>
       )}
 
       <button
-        onClick={handleClearSession}
-        className="bg-red-600 text-white px-4 py-2 rounded mt-4"
+        onClick={resetSession}
+        className="bg-red-600 text-white px-4 py-2 rounded mt-6"
       >
-        Clear Session
+        Clear Everything
       </button>
     </div>
   );

@@ -1,13 +1,16 @@
-import google.generativeai as genai
+import google.generativeai as llm
 import os
 from dotenv import load_dotenv
 
 load_dotenv()
-genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
+llm.configure(api_key=os.getenv("GEMINI_API_KEY"))
 
-model = genai.GenerativeModel(model_name="gemini-1.5-flash") 
+model = llm.GenerativeModel(model_name="gemini-1.5-flash") 
 
-def spin_text(text: str) -> str:
+
+# content of spin displayed here 
+
+def spin_content(text: str) -> str:
     prompt = f"""
     Rewrite the following text in a unique way, keeping the original meaning intact.
     Make it engaging and readable while avoiding plagiarism:
@@ -15,14 +18,14 @@ def spin_text(text: str) -> str:
     \"\"\"{text}\"\"\"
     """
     try:
-        response = model.generate_content(prompt)
-        return response.text.strip()
+        re = model.generate_content(prompt)
+        return re.text.strip()
     except Exception as e:
         print("Error during spin_text:", e)
         return "An error occurred while spinning the text."
 
-
-def review_text(text: str) -> str:
+# ai review or suggestion this part
+def aireview(text: str) -> str:
     prompt = f"""
     Review the following text and provide constructive feedback about clarity, grammar,
     and how it can be improved for a general audience:
@@ -30,8 +33,8 @@ def review_text(text: str) -> str:
     \"\"\"{text}\"\"\"
     """
     try:
-        response = model.generate_content(prompt)
-        return response.text.strip()
+        r = model.generate_content(prompt)
+        return r.text.strip()
     except Exception as e:
         print("Error during review_text:", e)
         return "An error occurred while reviewing the text."

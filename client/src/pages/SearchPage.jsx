@@ -1,91 +1,111 @@
 import { useState } from 'react';
-import VersionCard from '../components/VisionCard';
+import FeedbackCard from '../components/VisionCard';
 
 function SearchPage() {
-  const [query, setQuery] = useState('');
-  const [results, setResults] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
+  // User ke input ka text
+  const [searchText, setSearchText] = useState('');
 
-  // Store feedback per version_id
-  const [feedbackMap, setFeedbackMap] = useState({});
+  // Matched results
+  const [matchedResults, setMatchedResults] = useState([]);
 
-  const baseURL = import.meta.env.VITE_API_URL;
+  // Jab searching
+  const [isSearching, setIsSearching] = useState(false);
 
-  const handleSearch = async () => {
-    if (!query.trim()) return;
+  //  for fetching
+  const [fetchError, setFetchError] = useState(null);
 
-    setLoading(true);
-    setError(null);
+  // Har version ke feedback status ko track karne ke liye
+  const [givenFeedback, setGivenFeedback] = useState({});
+
+  const apiUrl = import.meta.env.VITE_API_URL;
+
+  // Search button press hone pe yeh function API call karta hai
+  const runSearch = async () => {
+    if (!searchText.trim()) return;
+
+    setIsSearching(true);
+    setFetchError(null);
+
     try {
-      const res = await fetch(`${baseURL}/ranked_results`, {
+      const response = await fetch(`${apiUrl}/ranked_results`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query }),
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ query: searchText }),
       });
 
-      const data = await res.json();
+      const { results } = await response.json();
 
-      const formatted = data.results.map((item, index) => ({
-        version: item.version_id || `v${index + 1}`,
-        text: item.text || '',
+      // Result ko sahi format mein convert kar rahe hain
+      const structuredResults = results.map((entry, idx) => ({
+        version: entry.version_id || `ver-${idx + 1}`,
+        text: entry.text || '',
       }));
 
-      setResults(formatted);
-      // Keep previous feedbacks for already given ones
-      const newMap = { ...feedbackMap };
-      formatted.forEach(({ version }) => {
-        if (!(version in newMap)) newMap[version] = null;
+      setMatchedResults(structuredResults);
+
+      // Pehle se diye gaye feedback preserve
+      const updatedFeedback = { ...givenFeedback };
+      structuredResults.forEach(({ version }) => {
+        if (!updatedFeedback.hasOwnProperty(version)) {
+          updatedFeedback[version] = null;
+        }
       });
-      setFeedbackMap(newMap);
+
+      setGivenFeedback(updatedFeedback);
     } catch (err) {
-      console.error(err);
-      setError('Failed to fetch ranked results.');
+      console.error('Search API failed:', err);
+      setFetchError('Unable to retrieve results.');
     } finally {
-      setLoading(false);
+      setIsSearching(false);
     }
   };
 
-  const handleFeedback = (versionId, type) => {
-    setFeedbackMap((prev) => ({ ...prev, [versionId]: type }));
+  //  feedback answer will be updated to all state
+  const recordFeedback = (verId, feedbackType) => {
+    setGivenFeedback((prevMap) => ({
+      ...prevMap,
+      [verId]: feedbackType,
+    }));
   };
 
   return (
     <div className="p-6 space-y-4">
-      <h1 className="text-2xl font-bold">📚 Search Relevant Versions</h1>
+      <h2 className="text-2xl font-bold">Find Relevant Versions</h2>
 
       <input
         type="text"
-        placeholder="Enter query..."
-        value={query}
-        onChange={(e) => setQuery(e.target.value)}
+        placeholder="Type your query here..."
+        value={searchText}
+        onChange={(e) => setSearchText(e.target.value)}
         className="w-full border border-gray-400 p-2 rounded"
       />
 
       <button
-        onClick={handleSearch}
-        disabled={!query.trim()}
+        onClick={runSearch}
+        disabled={!searchText.trim()}
         className="bg-purple-600 text-white px-4 py-2 rounded disabled:opacity-50 disabled:cursor-not-allowed"
       >
         Search
       </button>
 
-      {loading && <p className="text-blue-500">🔄 Searching...</p>}
-      {error && <p className="text-red-500">❌ {error}</p>}
+      {isSearching && <p className="text-blue-500">Searching...</p>}
+      {fetchError && <p className="text-red-600">{fetchError}</p>}
 
       <div className="grid gap-4 mt-4">
-        {results.length > 0 ? (
-          results.map((result, index) => (
-            <VersionCard
-              key={index}
-              version={result.version}
-              text={result.text}
-              submittedType={feedbackMap[result.version]}
-              onFeedback={handleFeedback}
+        {matchedResults.length > 0 ? (
+          matchedResults.map((item, idx) => (
+            <FeedbackCard
+              key={idx}
+              version={item.version}
+              text={item.text}
+              buttonState={givenFeedback[item.version]}
+              onFeedback={recordFeedback}
             />
           ))
         ) : (
-          !loading && <p className="text-gray-500">No results yet.</p>
+          !isSearching && <p className="text-gray-500">No results found.</p>
         )}
       </div>
     </div>
