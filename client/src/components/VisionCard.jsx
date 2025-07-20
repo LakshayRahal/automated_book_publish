@@ -1,22 +1,18 @@
-import React from 'react';
+function Feedc({ vs, text, but_St, onFeedback }) {
+  const host = import.meta.env.VITE_URL;
 
-function FeedbackCard({ version, text, buttonState, onFeedback }) {
-  const apiUrl = import.meta.env.VITE_API_URL;
-
-  // Handle button clicks for feedback
-  const submitFeedback = async (feedbackType) => {
+  const sub_fed = async (val) => {
     try {
-      await fetch(`${apiUrl}/feedback`, {
+      await fetch(`${host}/feedback`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          version_id: version,
-          feedback: feedbackType,
+          version_id: vs,
+          feedback: val,
         }),
       });
-
-      onFeedback(version, feedbackType);
-      alert(`You chose: ${feedbackType}`);
+      onFeedback(vs, val);
+      alert(`You chose: ${val}`);
     } catch (err) {
       console.error('Feedback submission failed:', err);
     }
@@ -24,43 +20,43 @@ function FeedbackCard({ version, text, buttonState, onFeedback }) {
 
   return (
     <div className="border border-gray-300 rounded-md p-4 shadow-sm">
-      <h3 className="font-semibold mb-2">📝 Version ID: {version}</h3>
+      <h3 className="font-semibold mb-2">Version ID: {vs}</h3>
 
       <div className="whitespace-pre-wrap mb-4 text-sm text-gray-800">
         {text}
       </div>
-    {/* three option button  */}
+
       <div className="flex flex-wrap gap-2">
         <button
-          onClick={() => submitFeedback('accepted')}
-          disabled={!!buttonState}
+          onClick={() => sub_fed('accepted')}
+          disabled={!!but_St}
           className="bg-green-600 text-white px-3 py-1 rounded disabled:opacity-50"
         >
           Accept
         </button>
         <button
-          onClick={() => submitFeedback('rejected')}
-          disabled={!!buttonState}
+          onClick={() => sub_fed('rejected')}
+          disabled={!!but_St}
           className="bg-red-600 text-white px-3 py-1 rounded disabled:opacity-50"
         >
           Reject
         </button>
         <button
-          onClick={() => submitFeedback('edited')}
-          disabled={!!buttonState}
+          onClick={() => sub_fed('edited')}
+          disabled={!!but_St}
           className="bg-yellow-500 text-white px-3 py-1 rounded disabled:opacity-50"
         >
-          Mark as Edited
+          show as Edited
         </button>
       </div>
 
-      {buttonState && (
+      {but_St && (
         <p className="mt-2 text-sm text-green-700">
-          Feedback: <strong>{buttonState}</strong>
+          Feedback: <strong>{but_St}</strong>
         </p>
       )}
     </div>
   );
 }
 
-export default FeedbackCard;
+export default Feedc;

@@ -1,98 +1,105 @@
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Optional
-from reward_engine import rec_feedback, get_same_rewards
 from scraper import scrap
-from ai_agents import spin_content, aireview
-from chroma_utils import save, retrieve
+from ai_agents import spn, aireview
+from chroma_utils import savdata, retrieve
+from reward_engine import upd_qtable,get_pdt_re
+from chroma_utils import sto
 
 call_pi = FastAPI()
 
-# cors all necessary conditions
+# Enable CORS
 call_pi.add_middleware(
+
     CORSMiddleware,
+    # all thing s we are allowing 
     allow_origins=["http://localhost:5173"],
+    # set credentials 
     allow_credentials=True,
+
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
+# Request Schemas
 class Srequest(BaseModel):
-    url: str
+    ul: str
 
 class Trequest(BaseModel):
-    text: str
+    t: str
     version_id: Optional[str] = None
 
 class Rrequest(BaseModel):
-    query: str
+    quer: str
 
 class Frequest(BaseModel):
     version_id: str
     feedback: str
 
-
-# main
-@call_pi.get("/")
-def root():
-    return {"message": "API is running"}
-
-# content from url 
 @call_pi.post("/scrape")
-def scrape(request: Srequest):
-    try:
-        print(f"[+] Scraping: {request.url}")
-        text, screenshot_path = scrap(request.url)
-        return {"content": text, "screenshot": screenshot_path}
-    except Exception as e:
-        print(f"[ERROR] Scraping failed: {e}")
-        return {"error": str(e)}
-
-# ai spin 
+def scrape(rqt: Srequest):
+    
+    print(f"Scraping: {rqt.ul}")
+    txt, sc_pth = scrap(rqt.ul)
+    return {"content": txt, "screenshot": sc_pth}
+   
 @call_pi.post("/spin")
-def spin_f(request: Trequest):
-    result = spin_content(request.text)
-    version_id = save(result)
-    return {"spun_text": result, "version_id": version_id}
+def spin_f(rqt: Trequest):
+    # spining of text form api key 
+    print("hello");
+    rt = spn(rqt.t)
 
+    vsid = savdata(rt)
+    return {"sp_txt": rt, "version_id": vsid}
 
-# ai review on editing
 @call_pi.post("/review")
-def review_f(request: Trequest):
-    result = aireview(request.text)
-    return {"reviewed_text": result}
+def review_f(rqt: Trequest):
+    rest = aireview(rqt.t)
+    # making review no saveing 
+    return {"reviewed_text": rest}
 
-
-
-
-# save karne ke liye
 @call_pi.post("/save_version")
-def save_f(request: Trequest):
-    version_id = request.version_id or "v1"
-    save(request.text, version_id)
-    return {"message": f"Version {version_id} saved successfully."}
+def save_f(rqt: Trequest):
+    # assigining value 
+    vsid = rqt.version_id;
+    #  saving data
+    savdata(rqt.t, vsid)
+    return {"message": f"Version {vsid} saved successfully."}
 
-# for retrieve
 @call_pi.post("/retrieve")
-def ret_f(request: Rrequest):
-    result = retrieve(request.query)
+def ret_f(rqt: Rrequest):
+    result = retrieve(rqt.quer)
     return {"results": result}
 
-# for feedback result
 @call_pi.post("/feedback")
-def coll_f(request: Frequest):
-    reward = rec_feedback(request.version_id, request.feedback)
-    return {"message": "Feedback recorded", "reward": reward}
+def coll_f(rqt: Frequest):
+    #  getting version from 
+    mtch = sto.get(rqt.version_id)
+    # if else 
+    if mtch:
+        txt = mtch["documents"][0]
+    else:
+        txt = ""
 
-# accprding to feedback result
+
+    rew = upd_qtable(rqt.version_id, rqt.feedback, txt)
+    #  return 
+    return {"message": "Feedback recorded", "reward": rew}
+
+def get_q_score(item):
+    return item["q_score"]
+
 @call_pi.post("/ranked_results")
-def get_ranked_f(request: Rrequest):
-    similar_versions = retrieve(request.query)
-    rewards = get_same_rewards()
-    sorted_versions = sorted(
-        similar_versions,
-        key=lambda r: rewards.get(r["version_id"], 0),
-        reverse=True
-    )
-    return {"results": sorted_versions}
+def get_ranked_f(rqt: Rrequest):
+    same_vs = retrieve(rqt.quer)
+    # making a loop to iterate 
+    for v in same_vs:
+        v["q_score"] = get_pdt_re(v["text"])
+   
+
+    sort_vs = sorted(same_vs, key=get_q_score, reverse=True)
+
+    return {"res": sort_vs}

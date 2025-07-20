@@ -1,0 +1,17 @@
+{
+  "len=729": {
+    "accepted": 0.271,
+    "rejected": 0.0,
+    "edited": 0.095
+  },
+  "len=756": {
+    "accepted": 0.19
+  },
+  "len=420": {
+    "accepted": 0.271,
+    "rejected": 0.0
+  },
+  "len=629": {
+    "accepted": 0.271
+  }
+}

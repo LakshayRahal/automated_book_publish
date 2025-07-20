@@ -1,70 +1,71 @@
 import { useState } from 'react';
-import FeedbackCard from '../components/VisionCard';
+import Feedc from '../components/VisionCard';
 
 function SearchPage() {
   // User ke input ka text
-  const [searchText, setSearchText] = useState('');
+  const [ser_txt, setser_txt] = useState('');
 
-  // Matched results
-  const [matchedResults, setMatchedResults] = useState([]);
+  // matching res
+  const [mtch_res, setmtch_res] = useState([]);
 
   // Jab searching
-  const [isSearching, setIsSearching] = useState(false);
+  const [serc, set_serc] = useState(false);
 
-  //  for fetching
-  const [fetchError, setFetchError] = useState(null);
+  const [f_error, setf_error] = useState(null);
 
   // Har version ke feedback status ko track karne ke liye
-  const [givenFeedback, setGivenFeedback] = useState({});
+  const [feed_st, setfeed_st] = useState({});
 
-  const apiUrl = import.meta.env.VITE_API_URL;
+  const host = import.meta.env.VITE_URL;
 
   // Search button press hone pe yeh function API call karta hai
-  const runSearch = async () => {
-    if (!searchText.trim()) return;
+  const run_ser = async () => {
+    if (!ser_txt.trim()) return;
 
-    setIsSearching(true);
-    setFetchError(null);
+    set_serc(true);
+    setf_error(null);
 
     try {
-      const response = await fetch(`${apiUrl}/ranked_results`, {
+      const resp = await fetch(`${host}/ranked_results`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ query: searchText }),
+        body: JSON.stringify({ quer: ser_txt }),
       });
 
-      const { results } = await response.json();
+      const { res } = await resp.json();
 
       // Result ko sahi format mein convert kar rahe hain
-      const structuredResults = results.map((entry, idx) => ({
+      const struct_res = res.map((entry, idx) => ({
         version: entry.version_id || `ver-${idx + 1}`,
         text: entry.text || '',
       }));
 
-      setMatchedResults(structuredResults);
+      setmtch_res(struct_res);
 
       // Pehle se diye gaye feedback preserve
-      const updatedFeedback = { ...givenFeedback };
-      structuredResults.forEach(({ version }) => {
-        if (!updatedFeedback.hasOwnProperty(version)) {
-          updatedFeedback[version] = null;
-        }
-      });
+     const updFeed = { ...feed_st };
 
-      setGivenFeedback(updatedFeedback);
+    for (const { version } of struct_res) {
+      if (!(version in updFeed)) {
+      updFeed[version] = null;
+     }
+}
+
+      setfeed_st(updFeed);
     } catch (err) {
       console.error('Search API failed:', err);
-      setFetchError('Unable to retrieve results.');
+      setf_error('Unable to retrieve results.');
     } finally {
-      setIsSearching(false);
+      set_serc(false);
     }
   };
 
   //  feedback answer will be updated to all state
-  const recordFeedback = (verId, feedbackType) => {
-    setGivenFeedback((prevMap) => ({
+  const recdFeed = (verId, feedbackType) => {
+    setfeed_st((prevMap) => ({
+      // previois me add karne ke liye
       ...prevMap,
       [verId]: feedbackType,
     }));
@@ -77,35 +78,36 @@ function SearchPage() {
       <input
         type="text"
         placeholder="Type your query here..."
-        value={searchText}
-        onChange={(e) => setSearchText(e.target.value)}
+        value={ser_txt}
+        //  pointer just like
+        onChange={(e) => setser_txt(e.target.value)}
         className="w-full border border-gray-400 p-2 rounded"
       />
 
       <button
-        onClick={runSearch}
-        disabled={!searchText.trim()}
+        onClick={run_ser}
+        disabled={!ser_txt.trim()}
         className="bg-purple-600 text-white px-4 py-2 rounded disabled:opacity-50 disabled:cursor-not-allowed"
       >
         Search
       </button>
 
-      {isSearching && <p className="text-blue-500">Searching...</p>}
-      {fetchError && <p className="text-red-600">{fetchError}</p>}
+      {serc && <p className="text-blue-500">Searching...</p>}
+      {f_error && <p className="text-red-600">{f_error}</p>}
 
       <div className="grid gap-4 mt-4">
-        {matchedResults.length > 0 ? (
-          matchedResults.map((item, idx) => (
-            <FeedbackCard
+        {mtch_res.length > 0 ? (
+          mtch_res.map((item, idx) => (
+            <Feedc
               key={idx}
-              version={item.version}
+              vs={item.version}
               text={item.text}
-              buttonState={givenFeedback[item.version]}
-              onFeedback={recordFeedback}
+              but_St={feed_st[item.version]}
+              onFeedback={recdFeed}
             />
           ))
         ) : (
-          !isSearching && <p className="text-gray-500">No results found.</p>
+          !serc && <p className="text-gray-500">No results found.</p>
         )}
       </div>
     </div>

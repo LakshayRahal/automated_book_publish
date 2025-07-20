@@ -1,19 +1,17 @@
 import requests
 from bs4 import BeautifulSoup
 
-def scrap(url):
-    re = requests.get(url, timeout=10)
-    if re.status_code != 200:
-        raise Exception(f"Failed to fetch page. Status: {re.status_code}")
+def scrap(ul):
+    re = requests.get(ul, timeout=10)
+    # use of BeautifulSoup to make html parser
+    sp = BeautifulSoup(re.text, 'html.parser')
+    # maded a div for finding content 
+    div = sp.find('div', class_='mw-parser-output')
 
-    soup = BeautifulSoup(re.text, 'html.parser')
-    div = soup.find('div', class_='mw-parser-output')
+#    all things included whther it is 
+    for t in div.find_all(['style','sup', 'table', 'script']):
+        t.decompose()
 
-    if not div:
-        raise Exception("Main content not found.")
-
-    for tag in div.find_all(['sup', 'table', 'style', 'script', 'img']):
-        tag.decompose()
-
-    total = div.get_text(separator="\n", strip=True)
-    return total, None
+    tl = div.get_text(separator="\n", strip=True)
+    # returninig 
+    return tl, None
